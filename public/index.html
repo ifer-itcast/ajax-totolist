@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Todo List</title>
+		<link rel="stylesheet" href="/assets/css/base.css">
+		<link rel="stylesheet" href="/assets/css/index.css">
+		<link rel="stylesheet" href="/js/nprogress/nprogress.css">
+	</head>
+	<body>
+		<section class="todoapp">
+			<header class="header">
+				<h1>todos</h1>
+				<input class="new-todo" placeholder="What needs to be done?" autofocus id="task">
+			</header>
+			<!-- This section should be hidden by default and shown when there are todos -->
+			<section class="main">
+				<input class="toggle-all" type="checkbox">
+				<label for="toggle-all">Mark all as complete</label>
+				<ul class="todo-list" id="todo-list"></ul>
+			</section>
+			<footer class="footer">
+				<span class="todo-count"><strong id="count">0</strong> item left</span>
+				<ul class="filters">
+					<li>
+						<a class="selected" href="#/">All</a>
+					</li>
+					<li>
+						<a href="#/active">Active</a>
+					</li>
+					<li>
+						<a href="#/completed">Completed</a>
+					</li>
+				</ul>
+				<!-- Hidden if no completed items are left ↓ -->
+				<button class="clear-completed">Clear completed</button>
+			</footer>
+		</section>
+		<script src="/js/jquery.min.js"></script>
+		<script src="/js/template-web.js"></script>
+		<script src="/js/nprogress/nprogress.js"></script>
+		<script type="text/html" id="taskTpl">
+			{{each tasks}}
+			<li class="{{$value.completed ? 'completed' : ''}}">
+				<div class="view">
+					<input class="toggle" type="checkbox" {{$value.completed ? 'checked' : ''}}>
+					<label>{{$value.title}}</label>
+					<button class="destroy" data-id="{{@$value._id}}"></button>
+				</div>
+				<input class="edit" value="Rule the web">
+			</li>
+			{{/each}}
+		</script>
+		<script>
+		// 存放任务列表
+		let taskAry = [];
+		let taskBox = $('#todo-list');
+		let taskInp = $('#task');
+		let strong = $('#count')
+		
+		// 页面中有请求发送时触发
+		$(document).on('ajaxStart', function() {
+			NProgress.start();
+		});
+		// 页面中有请求完成时触发
+		$(document).on('ajaxComplete', function() {
+			NProgress.done();
+		});
+		// 列表展示
+		$.ajax({
+			url: '/todo/task',
+			type: 'get',
+			success: function(response) {
+				taskAry = response;
+				render();
+				calcCount()
+			}
+		});
+		// 添加
+		taskInp.on('keyup', function(e) {
+			if(e.keyCode == 13) {
+				let taskName = $(this).val();
+				if(taskName.trim().leagth == 0) {
+					alert('请输入内容');
+					return;
+				}
+				$.ajax({
+					type: 'post',
+					url: '/todo/addTask',
+					contentType: 'application/json',
+					data: JSON.stringify({
+						title: taskName
+					}),
+					success: function(response) {
+						taskAry.push(response);
+						render();
+						taskInp.val('');
+						calcCount();
+					}
+				})
+			}
+		});
+
+		function render() {
+			let html = template('taskTpl', {
+				tasks: taskAry
+			});
+			// 任务列表显示在页面中
+			taskBox.html(html);
+		}
+		// 删除
+		taskBox.on('click', '.destroy', function() {
+			let id = $(this).attr('data-id');
+			$.ajax({
+				type: 'get',
+				url: '/todo/deleteTask',
+				data: {
+					_id: id
+				},
+				success: function(response) {
+					// id equal response._id
+					let index = taskAry.findIndex(item => item._id == id);
+					taskAry.splice(index, 1);
+					render();
+					calcCount();
+				}
+			});
+		});
+
+		// 切换状态
+		taskBox.on('change', '.toggle', function() {
+			// $(this).prop('checked')
+			let status = $(this).is(':checked');
+			let id = $(this).siblings('button').attr('data-id');
+			
+			$.ajax({
+				type: 'post',
+				url: '/todo/modifyTask',
+				data: JSON.stringify({_id: id, completed: status}),
+				contentType: 'application/json',
+				success: function (response) {
+					// 找到需要修改的那一条数据
+					let task = taskAry.find(item => item._id == id);
+					// 修改成数据库中确定的结果
+					task.completed = response.completed;
+					render();
+					calcCount();
+				}
+			});
+		});
+
+		// 双击编辑
+		taskBox.on('dblclick', 'label', function() {
+			$(this).parent().parent().addClass('editing');
+			// 给input 框中装上双击的div中的文本，并选中
+			$(this).parent().siblings('input').val($(this).text()).focus();
+		});
+		taskBox.on('blur', '.edit', function() {
+			let newTaskName = $(this).val();
+			let id = $(this).siblings().find('button').attr('data-id');
+			$.ajax({
+				url: '/todo/modifyTask',
+				type: 'post',
+				data: JSON.stringify({
+					_id: id,
+					title: newTaskName
+				}),
+				contentType: 'application/json',
+				success: function(response) {
+					// 确定需要修改那一条
+					let task = taskAry.find(item => item._id = id);
+					// 修改为数据库的返回值
+					task.title = response.title;
+					// 之所以离开的时候编辑框会消失，是因为这里进行了渲染
+					// 而渲染的内容默认并不会显示编辑框
+					render();
+				}
+			});
+		});
+
+		// 计算数量
+		function calcCount() {
+			let count = 0;
+			// 将未完成的数量过滤到一个新数组中
+			let newAry = taskAry.filter(item => !item.completed)
+			count = newAry.length;
+			strong.text(count);
+		}
+		</script>
+	</body>
+</html>
