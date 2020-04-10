@@ -15,7 +15,7 @@ app.use(bodyParser.json());
 // app.use(bodyParser.urlencoded({extended: false}));
 
 // 数据库连接
-mongoose.connect('mongodb://localhost:27017/todo', {useNewUrlParser: true }).then(() => console.log('~~~~~~~~~~~~数据库连接成功~~~~~~~~~~~~')).catch(err => console.log(err, '数据库连接失败'));
+mongoose.connect('mongodb://itcast:itcast@localhost:27017/todo', {useNewUrlParser: true }).then(() => console.log('~~~~~~~~~~~~数据库连接成功~~~~~~~~~~~~')).catch(err => console.log(err, '数据库连接失败'));
 
 // 导入todo路由案例
 const todoRouter = require('./route/todo')
