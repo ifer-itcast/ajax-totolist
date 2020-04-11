@@ -23,13 +23,13 @@
 			<footer class="footer">
 				<span class="todo-count"><strong id="count">0</strong> item left</span>
 				<ul class="filters">
-					<li>
-						<a class="selected" href="#/">All</a>
+					<li class="selected" data-status="task">
+						<a href="#/">All</a>
 					</li>
-					<li>
+					<li data-status="active">
 						<a href="#/active">Active</a>
 					</li>
-					<li>
+					<li data-status="completed">
 						<a href="#/completed">Completed</a>
 					</li>
 				</ul>
@@ -187,6 +187,19 @@
 			count = newAry.length;
 			strong.text(count);
 		}
+
+		// 完成状态切换
+		$('.filters li').on('click', function() {
+			$(this).addClass('selected').siblings().removeClass('selected');
+			let status = $(this).data('status');
+			$.ajax({
+				url: `/todo/${status}`,
+				success: function(con) {
+					taskAry = con;
+					render();
+				}
+			});
+		});
 		</script>
 	</body>
 </html>

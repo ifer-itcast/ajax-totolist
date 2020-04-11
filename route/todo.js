@@ -96,5 +96,17 @@ todoRouter.get('/changeAllTasksComplete', async (req, res) => {
 	res.send(result);
 });
 
+// 未完成
+todoRouter.get('/active', async (req, res) => {
+	const result = await Task.find({ completed: false });
+	res.send(result);
+});
+
+// 已完成
+todoRouter.get('/completed', async (req, res) => {
+	const result = await Task.find({ completed: true });
+	res.send(result);
+});
+
 // 将todo案例路由作为模块成员进行导出
 module.exports = todoRouter;
