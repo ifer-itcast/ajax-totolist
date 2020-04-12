@@ -1,5 +1,20 @@
 # 补充
 
+## 样式问题
+
+```css
+.todo-list li .toggle:after {
+    position: absolute;
+    left: 0;
+    height: 40px;
+    content: url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%22-10%20-18%20100%20135%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22none%22%20stroke%3D%22%23ededed%22%20stroke-width%3D%223%22/%3E%3C/svg%3E');
+}
+
+.todo-list li .toggle:checked:after {
+    content: url('data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2240%22%20height%3D%2240%22%20viewBox%3D%22-10%20-18%20100%20135%22%3E%3Ccircle%20cx%3D%2250%22%20cy%3D%2250%22%20r%3D%2250%22%20fill%3D%22none%22%20stroke%3D%22%23bddad5%22%20stroke-width%3D%223%22/%3E%3Cpath%20fill%3D%22%235dc2af%22%20d%3D%22M72%2025L42%2071%2027%2056l-4%204%2020%2020%2034-52z%22/%3E%3C/svg%3E');
+}
+```
+
 ## 底部按钮的切换效果
 
 为了方便控制，高亮的操作放到了 li 上面，需要修改对应的 CSS，例如：
@@ -99,16 +114,15 @@ todoRouter.get('/completed', async (req, res) => {
 
 ## 页面刷新时的问题
 
-页面没有数据，需要获取数据并渲染
+需要在页面刷新时获取数据并渲染，不然数据会丢失
 
 ```javascript
 getData();
 ```
 
-底部切换的状态没有保持
+底部按钮的状态没有保持，需要根据 hash 高亮对应的 li
 
 ```javascript
-// 刷新时根据 hash 高亮对应的 li
 function keepBtnStatus() {
     let num = location.hash === '#active' ? 1 : (location.hash === '#completed' ? 2 : 0);
     $('.filters li').eq(num).addClass('selected').siblings().removeClass('selected');
@@ -116,28 +130,15 @@ function keepBtnStatus() {
 keepBtnStatus();
 ```
 
-## 直接输入 `http://localhost:3000/todo/` 时的问题
+## 直接输入 `http://localhost:3000/todo/` 时的奇怪问题
 
-调用的是 todo 接口，返回的就是 /todo 对应的 HTML 页面（字符串），最后循环的是这堆字符串，模板中的 each 也能循环 'abc' 这种，可以测试下！
+调用的是 todo 接口，返回的就是 /todo 对应的 HTML 页面（字符串），最后循环的是这堆字符串（模板中的 each 也能循环 'abc' 这种，可以测试下）
 
-解决：当打开地址为 http://localhost:3000/todo 时，为了匹配 task 接口，需要进行如下操作
+解决：当打开地址为 http://localhost:3000/todo 时，就获取全部数据，即匹配 task 接口即可，需要进行如下操作
 
 ```javascript
 if (!location.hash) {
     location.hash = '#task';
-}
-```
-
-## 计算未完成的数量，从后端接口获取
-
-```javascript
-function calcCount() {
-    $.ajax({
-        url: '/todo/unCompletedTaskCount',
-        success: function (res) {
-            strong.text(res.num);
-        }
-    })
 }
 ```
 
@@ -154,8 +155,23 @@ $('.clear-completed').on('click', function () {
 });
 ```
 
-## 其他变化
+## 一个原则
 
-增加、删除、修改数据等的操作，只需 AJAX 请求成功后调用 `getData()` 即可！**所有数据状态的变化都应该依赖后端返回的结果，后端成功了才是真正的成功，前端才能进行数据的渲染！**
+**所有数据状态的变化都应该依赖后端返回的结果，后端操作成功了才是真正的成功，前端才能进行数据的渲染！**
 
+例如计算未完成的列表数量，需要从后端获取才是正确的姿势！
 
+```javascript
+function calcCount() {
+    $.ajax({
+        url: '/todo/unCompletedTaskCount',
+        success: function (res) {
+            strong.text(res.num);
+        }
+    })
+}
+```
+
+其他的增加、删除、修改数据等的操作，只需 AJAX 请求成功后调用 `getData()` 即可，前端无需依赖全局变量 `taskAry` 进行操作！
+
+`getData()` 请求数据成功后要调用 `calcCount()` 重新计算下未完成数量，但并不是所有获取数据的操作都需要调用 `calcCount()`（例如修改），可以给通过传递参数的方式解决，例如 `getDate(true)` 代表需要重新获取，false 不获取即可！
