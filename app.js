@@ -12,7 +12,7 @@ const app = express();
 app.use(express.static(path.join(__dirname, 'public')));
 // 处理post请求参数
 app.use(bodyParser.json()); 
-// app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.urlencoded({extended: false}));
 
 // 数据库连接
 mongoose.connect('mongodb://itcast:itcast@localhost:27017/todo', {useNewUrlParser: true, useUnifiedTopology: true }).then(() => console.log('~~~~~~~~~~~~数据库连接成功~~~~~~~~~~~~')).catch(err => console.log(err, '数据库连接失败'));

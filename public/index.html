@@ -1,46 +1,48 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="utf-8">
-		<meta name="viewport" content="width=device-width, initial-scale=1">
-		<title>Todo List</title>
-		<link rel="stylesheet" href="/assets/css/base.css">
-		<link rel="stylesheet" href="/assets/css/index.css">
-		<link rel="stylesheet" href="/js/nprogress/nprogress.css">
-	</head>
-	<body>
-		<section class="todoapp">
-			<header class="header">
-				<h1>todos</h1>
-				<input class="new-todo" placeholder="What needs to be done?" autofocus id="task">
-			</header>
-			<!-- This section should be hidden by default and shown when there are todos -->
-			<section class="main">
-				<input class="toggle-all" type="checkbox">
-				<label for="toggle-all">Mark all as complete</label>
-				<ul class="todo-list" id="todo-list"></ul>
-			</section>
-			<footer class="footer">
-				<span class="todo-count"><strong id="count">0</strong> item left</span>
-				<ul class="filters">
-					<li class="selected" data-status="task">
-						<a href="#/">All</a>
-					</li>
-					<li data-status="active">
-						<a href="#/active">Active</a>
-					</li>
-					<li data-status="completed">
-						<a href="#/completed">Completed</a>
-					</li>
-				</ul>
-				<!-- Hidden if no completed items are left ↓ -->
-				<button class="clear-completed">Clear completed</button>
-			</footer>
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Todo List</title>
+	<link rel="stylesheet" href="/assets/css/base.css">
+	<link rel="stylesheet" href="/assets/css/index.css">
+	<link rel="stylesheet" href="/js/nprogress/nprogress.css">
+</head>
+
+<body>
+	<section class="todoapp">
+		<header class="header">
+			<h1>todos</h1>
+			<input class="new-todo" placeholder="What needs to be done?" autofocus id="task">
+		</header>
+		<!-- This section should be hidden by default and shown when there are todos -->
+		<section class="main">
+			<input class="toggle-all" type="checkbox">
+			<label for="toggle-all">Mark all as complete</label>
+			<ul class="todo-list" id="todo-list"></ul>
 		</section>
-		<script src="/js/jquery.min.js"></script>
-		<script src="/js/template-web.js"></script>
-		<script src="/js/nprogress/nprogress.js"></script>
-		<script type="text/html" id="taskTpl">
+		<footer class="footer">
+			<span class="todo-count"><strong id="count">0</strong> item left</span>
+			<ul class="filters">
+				<li class="selected" data-status="task">
+					<a href="#all">All</a>
+				</li>
+				<li data-status="active">
+					<a href="#active">Active</a>
+				</li>
+				<li data-status="completed">
+					<a href="#completed">Completed</a>
+				</li>
+			</ul>
+			<!-- Hidden if no completed items are left ↓ -->
+			<button class="clear-completed">Clear completed</button>
+		</footer>
+	</section>
+	<script src="/js/jquery.min.js"></script>
+	<script src="/js/template-web.js"></script>
+	<script src="/js/nprogress/nprogress.js"></script>
+	<script type="text/html" id="taskTpl">
 			{{each tasks}}
 			<li class="{{$value.completed ? 'completed' : ''}}">
 				<div class="view">
@@ -52,154 +54,101 @@
 			</li>
 			{{/each}}
 		</script>
-		<script>
+	<script>
 		// 存放任务列表
-		let taskAry = [];
 		let taskBox = $('#todo-list');
 		let taskInp = $('#task');
 		let strong = $('#count')
-		
+
 		// 页面中有请求发送时触发
-		$(document).on('ajaxStart', function() {
+		$(document).on('ajaxStart', function () {
 			NProgress.start();
 		});
 		// 页面中有请求完成时触发
-		$(document).on('ajaxComplete', function() {
+		$(document).on('ajaxComplete', function () {
 			NProgress.done();
 		});
-		// 列表展示
-		$.ajax({
-			url: '/todo/task',
-			type: 'get',
-			success: function(response) {
-				taskAry = response;
-				render();
-				calcCount()
-			}
-		});
+		if (!location.hash) location.hash = '#all';
 		// 添加
-		taskInp.on('keyup', function(e) {
-			if(e.keyCode == 13) {
-				let taskName = $(this).val();
-				if(taskName.trim().leagth == 0) {
+		taskInp.on('keyup', function (e) {
+			if (e.keyCode == 13) {
+				let title = $(this).val();
+				if (title.trim().leagth == 0) {
 					alert('请输入内容');
 					return;
 				}
-				$.ajax({
-					type: 'post',
-					url: '/todo/addTask',
-					contentType: 'application/json',
-					data: JSON.stringify({
-						title: taskName
-					}),
-					success: function(response) {
-						taskAry.push(response);
-						render();
-						taskInp.val('');
-						calcCount();
-					}
-				})
+				$.post('/todo/addTask', { title }, () => {
+					getList();
+					taskInp.val('');
+				});
 			}
 		});
 
-		function render() {
+		function render(tasks) {
 			let html = template('taskTpl', {
-				tasks: taskAry
+				tasks
 			});
-			// 任务列表显示在页面中
 			taskBox.html(html);
 		}
 		// 删除
-		taskBox.on('click', '.destroy', function() {
-			let id = $(this).attr('data-id');
-			$.ajax({
-				type: 'get',
-				url: '/todo/deleteTask',
-				data: {
-					_id: id
-				},
-				success: function(response) {
-					// id equal response._id
-					let index = taskAry.findIndex(item => item._id == id);
-					taskAry.splice(index, 1);
-					render();
-					calcCount();
-				}
-			});
+		taskBox.on('click', '.destroy', function () {
+			let _id = $(this).attr('data-id');
+			$.get('/todo/deleteTask', { _id }, () => getList());
 		});
 
-		// 切换状态
-		taskBox.on('change', '.toggle', function() {
-			// $(this).prop('checked')
-			let status = $(this).is(':checked');
-			let id = $(this).siblings('button').attr('data-id');
-			
-			$.ajax({
-				type: 'post',
-				url: '/todo/modifyTask',
-				data: JSON.stringify({_id: id, completed: status}),
-				contentType: 'application/json',
-				success: function (response) {
-					// 找到需要修改的那一条数据
-					let task = taskAry.find(item => item._id == id);
-					// 修改成数据库中确定的结果
-					task.completed = response.completed;
-					render();
-					calcCount();
-				}
-			});
+		// 切换完成状态
+		taskBox.on('change', '.toggle', function () {
+			let completed = $(this).is(':checked');
+			let _id = $(this).siblings('button').attr('data-id');
+			$.post('/todo/modifyTask', { _id, completed }, () => getList());
 		});
 
-		// 双击编辑
-		taskBox.on('dblclick', 'label', function() {
+		// 双击出现 Input 框
+		taskBox.on('dblclick', 'label', function () {
 			$(this).parent().parent().addClass('editing');
-			// 给input 框中装上双击的div中的文本，并选中
 			$(this).parent().siblings('input').val($(this).text()).focus();
 		});
-		taskBox.on('blur', '.edit', function() {
-			let newTaskName = $(this).val();
-			let id = $(this).siblings().find('button').attr('data-id');
-			$.ajax({
-				url: '/todo/modifyTask',
-				type: 'post',
-				data: JSON.stringify({
-					_id: id,
-					title: newTaskName
-				}),
-				contentType: 'application/json',
-				success: function(response) {
-					// 确定需要修改那一条
-					let task = taskAry.find(item => item._id = id);
-					// 修改为数据库的返回值
-					task.title = response.title;
-					// 之所以离开的时候编辑框会消失，是因为这里进行了渲染
-					// 而渲染的内容默认并不会显示编辑框
-					render();
-				}
-			});
+		// 离开 Input 框改变数据
+		taskBox.on('blur', '.edit', function () {
+			let title = $(this).val();
+			let _id = $(this).siblings().find('button').attr('data-id');
+			$.post('/todo/modifyTask', { _id, title }, () => getList(false));
 		});
 
 		// 计算数量
 		function calcCount() {
-			let count = 0;
-			// 将未完成的数量过滤到一个新数组中
-			let newAry = taskAry.filter(item => !item.completed)
-			count = newAry.length;
-			strong.text(count);
+			$.get('/todo/unCompletedTaskCount', res => strong.text(res.num));
 		}
 
 		// 完成状态切换
-		$('.filters li').on('click', function() {
+		$('.filters li').on('click', function () {
 			$(this).addClass('selected').siblings().removeClass('selected');
-			let status = $(this).data('status');
-			$.ajax({
-				url: `/todo/${status}`,
-				success: function(con) {
-					taskAry = con;
-					render();
-				}
-			});
 		});
-		</script>
-	</body>
+
+		// 底部切换会导致 hash 变化
+		window.addEventListener('hashchange', function () {
+			getList();
+		});
+
+		getList();
+
+		function getList(isNeedCalc = true) {
+			$.get(`/todo/${location.hash.substring(1)}`, function (res) {
+				render(res);
+				isNeedCalc && calcCount();
+			});
+		}
+
+		function keepBtnStatus() {
+			let num = location.hash === '#active' ? 1 : (location.hash === '#completed' ? 2 : 0);
+			$('.filters li').eq(num).addClass('selected').siblings().removeClass('selected');
+		}
+		keepBtnStatus();
+
+		$('.clear-completed').on('click', function () {
+			$.get('/todo/clearTask', () => getList());
+		});
+	</script>
+</body>
+
 </html>

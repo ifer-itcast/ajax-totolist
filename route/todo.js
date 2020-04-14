@@ -10,29 +10,55 @@ const todoRouter = express.Router();
 const Task = require('../model/task');
 
 // 获取任务列表
-todoRouter.get('/task', async (req, res) => {
+todoRouter.get('/all', async (req, res) => {
 	const task = await Task.find();
 	// 响应
 	res.send(task);
 });
 
+// 未完成
+todoRouter.get('/active', async (req, res) => {
+	const result = await Task.find({
+		completed: false
+	});
+	res.send(result);
+});
+
+// 已完成
+todoRouter.get('/completed', async (req, res) => {
+	const result = await Task.find({
+		completed: true
+	});
+	res.send(result);
+});
+
+
 // 添加任务
 todoRouter.post('/addTask', async (req, res) => {
 	// 接收客户端传递过来的任务名称
-	const { title } = req.body;
+	const {
+		title
+	} = req.body;
 	// 验证规则
 	const schema = {
 		title: Joi.string().required().min(2).max(30)
 	};
 	// 验证客户端传递过来的请求参数 
-	const { error } = Joi.validate(req.body, schema);
+	const {
+		error
+	} = Joi.validate(req.body, schema);
 	// 验证失败
 	if (error) {
 		// 将错误信息响应给客户端
-		return res.status(400).send({message: error.details[0].message})
+		return res.status(400).send({
+			message: error.details[0].message
+		})
 	}
 	// 创建任务实例
-	const task = new Task({title: title, completed: false});
+	const task = new Task({
+		title: title,
+		completed: false
+	});
 	// 执行插入操作
 	await task.save();
 	// 响应
@@ -44,20 +70,28 @@ todoRouter.post('/addTask', async (req, res) => {
 // 删除任务
 todoRouter.get('/deleteTask', async (req, res) => {
 	// 要删除的任务id
-	const { _id } = req.query;
+	const {
+		_id
+	} = req.query;
 	// 验证规则
 	const schema = {
 		_id: Joi.string().required().regex(/^[0-9a-fA-F]{24}$/)
 	}
 	// 验证客户端传递过来的请求参数 
-	const { error } = Joi.validate(req.query, schema);
+	const {
+		error
+	} = Joi.validate(req.query, schema);
 	// 验证失败
 	if (error) {
 		// 将错误信息响应给客户端
-		return res.status(400).send({message: error.details[0].message})
+		return res.status(400).send({
+			message: error.details[0].message
+		})
 	}
 	// 删除任务
-	const task = await Task.findOneAndDelete({_id: _id});
+	const task = await Task.findOneAndDelete({
+		_id: _id
+	});
 	// 响应
 	res.send(task);
 });
@@ -65,7 +99,9 @@ todoRouter.get('/deleteTask', async (req, res) => {
 // 清除已完成任务
 todoRouter.get('/clearTask', async (req, res) => {
 	// 执行清空操作
-	const result = await Task.deleteMany({completed: true});
+	const result = await Task.deleteMany({
+		completed: true
+	});
 	// 返回清空数据
 	res.send(result);
 });
@@ -73,7 +109,11 @@ todoRouter.get('/clearTask', async (req, res) => {
 // 修改任务
 todoRouter.post('/modifyTask', async (req, res) => {
 	// 执行修改操作
-	const task = await Task.findOneAndUpdate({_id: req.body._id}, _.pick(req.body, ['title', 'completed']),{new: true})
+	const task = await Task.findOneAndUpdate({
+		_id: req.body._id
+	}, _.pick(req.body, ['title', 'completed']), {
+		new: true
+	})
 	// 响应
 	res.send(task);
 });
@@ -81,32 +121,29 @@ todoRouter.post('/modifyTask', async (req, res) => {
 // 查询未完成任务数量
 todoRouter.get('/unCompletedTaskCount', async (req, res) => {
 	// 执行查询操作
-	const result = await Task.countDocuments({completed: false});
+	const result = await Task.countDocuments({
+		completed: false
+	});
 	// 响应
-	res.send({num: result})
+	res.send({
+		num: result
+	})
 });
 
 // 更改任务全部状态
 todoRouter.get('/changeAllTasksComplete', async (req, res) => {
 	// 状态
-	const { status } = req.query;
+	const {
+		status
+	} = req.query;
 	// 执行更改状态操作
-	const result = await Task.updateMany({}, {completed: status});
+	const result = await Task.updateMany({}, {
+		completed: status
+	});
 	// 响应
 	res.send(result);
 });
 
-// 未完成
-todoRouter.get('/active', async (req, res) => {
-	const result = await Task.find({ completed: false });
-	res.send(result);
-});
-
-// 已完成
-todoRouter.get('/completed', async (req, res) => {
-	const result = await Task.find({ completed: true });
-	res.send(result);
-});
 
 // 将todo案例路由作为模块成员进行导出
 module.exports = todoRouter;
