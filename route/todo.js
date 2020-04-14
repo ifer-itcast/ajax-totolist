@@ -62,9 +62,7 @@ todoRouter.post('/addTask', async (req, res) => {
 	// 执行插入操作
 	await task.save();
 	// 响应
-	setTimeout(() => {
-		res.send(task);
-	}, 2000)
+	res.send(task);
 });
 
 // 删除任务

@@ -55,99 +55,112 @@
 			{{/each}}
 		</script>
 	<script>
-		// 存放任务列表
-		let taskBox = $('#todo-list');
-		let taskInp = $('#task');
-		let strong = $('#count')
-
-		// 页面中有请求发送时触发
-		$(document).on('ajaxStart', function () {
-			NProgress.start();
-		});
-		// 页面中有请求完成时触发
-		$(document).on('ajaxComplete', function () {
-			NProgress.done();
-		});
-		if (!location.hash) location.hash = '#all';
-		// 添加
-		taskInp.on('keyup', function (e) {
-			if (e.keyCode == 13) {
-				let title = $(this).val();
-				if (title.trim().leagth == 0) {
-					alert('请输入内容');
-					return;
+		const todoList = (function () {
+			const taskBox = $('#todo-list'), taskInp = $('#task'), strong = $('#count'), taskBtns = $('.filters li'), clearBtn = $('.clear-completed');
+			return {
+				init: function () {
+					this.firstHash();
+					this.bindEvent();
+					this.getList();
+					this.keepBtnStatus();
+				},
+				// Hash 的默认处理
+				firstHash: function () {
+					if (!location.hash) location.hash = '#all';
+				},
+				// 绑定事件的操作
+				bindEvent: function () {
+					const _this = this;
+					taskInp.on('keyup', this.addTodo.bind(taskInp, this));
+					taskBtns.on('click', this.handlePullListClick);
+					taskBox.on('dblclick', 'label', this.showInput);
+					taskBox.on('blur', '.edit', function () {
+						_this.editTodo(this, _this);
+					});
+					taskBox.on('click', '.destroy', function () {
+						_this.deleteTodo(this, _this);
+					});
+					taskBox.on('change', '.toggle', function () {
+						_this.toggleCompleted(this, _this);
+					});
+					clearBtn.on('click', () => this.clearCompleted());
+					// 不能直接 this.getList，这样会导致 getList 函数中的 this 指向有问题
+					window.addEventListener('hashchange', () => this.getList());
+					$(document).on('ajaxStart', NProgress.start);
+					$(document).on('ajaxComplete', NProgress.done);
+				},
+				// 添加 Todo
+				addTodo: function (that, e) {
+					if (e.keyCode === 13) {
+						let title = $(this).val();
+						if (title.trim().leagth == 0) {
+							alert('请输入内容');
+							return;
+						}
+						$.post('/todo/addTask', { title }, () => {
+							that.getList();
+							taskInp.val('');
+						});
+					}
+				},
+				// 获取 TodoList
+				getList: function (isNeedCalc = true) {
+					$.get(`/todo/${location.hash.substring(1)}`, (res) => {
+						this.render(res);
+						isNeedCalc && this.calcCount();
+					});
+				},
+				// 渲染 TodoList
+				render: function (tasks) {
+					let html = template('taskTpl', {
+						tasks
+					});
+					taskBox.html(html);
+				},
+				// 未完成数量
+				calcCount: function () {
+					$.get('/todo/unCompletedTaskCount', res => strong.text(res.num));
+				},
+				// 切换底部按钮状态
+				handlePullListClick: function () {
+					$(this).addClass('selected').siblings().removeClass('selected');
+				},
+				// 刷新时保持底部按钮状态
+				keepBtnStatus: function () {
+					let num = location.hash === '#active' ? 1 : (location.hash === '#completed' ? 2 : 0);
+					$('.filters li').eq(num).addClass('selected').siblings().removeClass('selected');
+				},
+				// 双击时显示 Input 框
+				showInput: function () {
+					$(this).parent().parent().addClass('editing');
+					$(this).parent().siblings('input').val($(this).text()).focus();
+				},
+				// 编辑 Todo
+				editTodo: function (domEle, that) {
+					let title = $(domEle).val();
+					let _id = $(domEle).siblings().find('button').attr('data-id');
+					$.post('/todo/modifyTask', { _id, title }, () => that.getList(false));
+				},
+				// 删除 Todo
+				deleteTodo: function (domEle, that) {
+					let _id = $(domEle).attr('data-id');
+					$.get('/todo/deleteTask', { _id }, () => that.getList());
+				},
+				// 切换 Todo 的完成状态
+				toggleCompleted: function (domEle, that) {
+					let completed = $(domEle).is(':checked');
+					let _id = $(domEle).siblings('button').attr('data-id');
+					// 注意这里不能 this.getList，这样会导致 getList 函数中的 this 指向有问题
+					$.post('/todo/modifyTask', { _id, completed }, () => that.getList());
+				},
+				// 清楚已经完成的 Todo
+				clearCompleted: function () {
+					$.get('/todo/clearTask', () => this.getList());
 				}
-				$.post('/todo/addTask', { title }, () => {
-					getList();
-					taskInp.val('');
-				});
-			}
-		});
+			};
+		})();
 
-		function render(tasks) {
-			let html = template('taskTpl', {
-				tasks
-			});
-			taskBox.html(html);
-		}
-		// 删除
-		taskBox.on('click', '.destroy', function () {
-			let _id = $(this).attr('data-id');
-			$.get('/todo/deleteTask', { _id }, () => getList());
-		});
-
-		// 切换完成状态
-		taskBox.on('change', '.toggle', function () {
-			let completed = $(this).is(':checked');
-			let _id = $(this).siblings('button').attr('data-id');
-			$.post('/todo/modifyTask', { _id, completed }, () => getList());
-		});
-
-		// 双击出现 Input 框
-		taskBox.on('dblclick', 'label', function () {
-			$(this).parent().parent().addClass('editing');
-			$(this).parent().siblings('input').val($(this).text()).focus();
-		});
-		// 离开 Input 框改变数据
-		taskBox.on('blur', '.edit', function () {
-			let title = $(this).val();
-			let _id = $(this).siblings().find('button').attr('data-id');
-			$.post('/todo/modifyTask', { _id, title }, () => getList(false));
-		});
-
-		// 计算数量
-		function calcCount() {
-			$.get('/todo/unCompletedTaskCount', res => strong.text(res.num));
-		}
-
-		// 完成状态切换
-		$('.filters li').on('click', function () {
-			$(this).addClass('selected').siblings().removeClass('selected');
-		});
-
-		// 底部切换会导致 hash 变化
-		window.addEventListener('hashchange', function () {
-			getList();
-		});
-
-		getList();
-
-		function getList(isNeedCalc = true) {
-			$.get(`/todo/${location.hash.substring(1)}`, function (res) {
-				render(res);
-				isNeedCalc && calcCount();
-			});
-		}
-
-		function keepBtnStatus() {
-			let num = location.hash === '#active' ? 1 : (location.hash === '#completed' ? 2 : 0);
-			$('.filters li').eq(num).addClass('selected').siblings().removeClass('selected');
-		}
-		keepBtnStatus();
-
-		$('.clear-completed').on('click', function () {
-			$.get('/todo/clearTask', () => getList());
-		});
+		todoList.init();
 	</script>
 </body>
 
