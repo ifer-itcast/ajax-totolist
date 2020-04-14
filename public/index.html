@@ -14,7 +14,7 @@
 	<section class="todoapp">
 		<header class="header">
 			<h1>todos</h1>
-			<input class="new-todo" placeholder="What needs to be done?" autofocus id="task">
+			<input class="new-todo" placeholder="What needs to be done?" id="task">
 		</header>
 		<!-- This section should be hidden by default and shown when there are todos -->
 		<section class="main">
@@ -43,30 +43,31 @@
 	<script src="/js/template-web.js"></script>
 	<script src="/js/nprogress/nprogress.js"></script>
 	<script type="text/html" id="taskTpl">
-			{{each tasks}}
-			<li class="{{$value.completed ? 'completed' : ''}}">
-				<div class="view">
-					<input class="toggle" type="checkbox" {{$value.completed ? 'checked' : ''}}>
-					<label>{{$value.title}}</label>
-					<button class="destroy" data-id="{{@$value._id}}"></button>
-				</div>
-				<input class="edit" value="Rule the web">
-			</li>
-			{{/each}}
-		</script>
+		{{each tasks}}
+		<li class="{{$value.completed ? 'completed' : ''}}">
+			<div class="view">
+				<input class="toggle" type="checkbox" {{$value.completed ? 'checked' : ''}}>
+				<label>{{$value.title}}</label>
+				<button class="destroy" data-id="{{@$value._id}}"></button>
+			</div>
+			<input class="edit" value="Rule the web">
+		</li>
+		{{/each}}
+	</script>
 	<script>
 		const todoList = (function () {
 			const taskBox = $('#todo-list'), taskInp = $('#task'), strong = $('#count'), taskBtns = $('.filters li'), clearBtn = $('.clear-completed');
 			return {
 				init: function () {
-					this.firstHash();
+					this.handleHashAndFocus();
 					this.bindEvent();
 					this.getList();
 					this.keepBtnStatus();
 				},
 				// Hash 的默认处理
-				firstHash: function () {
+				handleHashAndFocus: function () {
 					if (!location.hash) location.hash = '#all';
+					taskInp.focus();
 				},
 				// 绑定事件的操作
 				bindEvent: function () {
